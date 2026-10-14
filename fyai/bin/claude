@@ -1,0 +1,33 @@
+#!/bin/bash
+# fyai as the claude CLI of a demo, in the private home of setup.sh. A Claude
+# model name gives the model of the arena; another name goes through.
+T=$(dirname "$(dirname "$(realpath "$0")")")
+[ -r "$T/state/fyai-bin" ] || { echo "run $T/setup.sh first" >&2; exit 2; }
+BIN=$(cat "$T/state/fyai-bin")
+claude_model() {
+	case "$1" in
+	haiku|sonnet|opus|claude-haiku-*|claude-sonnet-*|claude-opus-*) return 0 ;;
+	esac
+	return 1
+}
+args=()
+while [ $# -gt 0 ]; do
+	case "$1" in
+	--model|--fallback-model)
+		if [ $# -gt 1 ] && claude_model "$2"; then
+			shift 2
+			continue
+		fi ;;
+	--model=*|--fallback-model=*)
+		if claude_model "${1#*=}"; then
+			shift
+			continue
+		fi ;;
+	esac
+	args+=("$1")
+	shift
+done
+export HOME="$T/state/home" XDG_CONFIG_HOME="$T/state/home/.config" \
+	XDG_STATE_HOME="$T/state/home/.local/state" FYAI_AUTH_STORAGE=file
+[ -n "${FYAI_LD_LIBRARY_PATH:-}" ] && export LD_LIBRARY_PATH="$FYAI_LD_LIBRARY_PATH"
+exec "$BIN" "${args[@]}"
